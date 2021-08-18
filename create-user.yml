@@ -1,0 +1,47 @@
+---
+- name: User creation
+  hosts: all
+  become: true
+  vars:
+    username: "{{user|default('ubuntu')}}"
+    ssh_pk_path: "{{ssh_pk_file|default('~/.ssh/deployer/primary.pub')}}"
+    sshkey: "{{lookup('file',ssh_pk_path)}}"
+    extra_group: "{{group|default('docker')}}"
+
+  tasks:
+    - name: "Create {{extra_group}} group"
+      ansible.builtin.group:
+        name: "{{extra_group}}"
+
+    - name: "Create {{username}} user's account"
+      ansible.builtin.user:
+        name: "{{username}}"
+        shell: "/bin/bash"
+        groups: sudo,"{{extra_group}}"
+        append: true
+
+    - name: Allow user to sudo without password
+      ansible.builtin.lineinfile:
+        line: "{{username}} ALL=(ALL) NOPASSWD:ALL "
+        path: /etc/sudoers
+        state: present
+        regexp: '^%{{username}} ALL='
+        validate: "visudo -cf %s"
+
+    - name: Create ssh folder
+      ansible.builtin.file:
+        path: "~{{username}}/.ssh"
+        state: directory
+        owner: "{{username}}"
+        group: "{{username}}"
+        mode: 00700
+
+    - name: Upload ssh public key to the user account
+      ansible.builtin.lineinfile:
+        line: "{{sshkey}}"
+        path: "~{{username}}/.ssh/authorized_keys"
+        state: present
+        create: yes
+        mode: 0644
+        group: "{{username}}"
+        owner: "{{username}}"
