@@ -1,0 +1,52 @@
+---
+- name: Docker installation
+  hosts: all
+  become: true
+  gather_facts: yes
+  vars:
+    docker_compose_group: "{{group|default('docker')}}"
+
+  tasks:
+    - name: Install aptitude using apt
+      ansible.builtin.apt:
+        name: aptitude
+        state: latest
+        force_apt_get: yes
+        update_cache: yes
+
+    - name: Install required system packages
+      ansible.builtin.apt: name="{{item}}" state=latest update_cache=yes
+      loop:
+        - "apt-transport-https"
+        - "ca-certificates"
+        - "curl"
+        - "gnupg"
+        - "lsb-release"
+
+    - name: Add Docker  GPG apt key
+      ansible.builtin.apt_key:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        state: present
+
+    - name: Add Docker repository
+      ansible.builtin.apt_repository:
+        repo: deb https://download.docker.com/linux/ubuntu bionic stable
+        state: present
+
+    - name: Update apt and install Docker Engine
+      ansible.builtin.apt: name="{{item}}" state=latest update_cache=yes
+      loop:
+        - "docker-ce"
+        - "docker-ce-cli"
+        - "containerd.io"
+
+    - name: "Ensure {{docker_compose_group}} group exist"
+      ansible.builtin.group:
+        name: "{{docker_compose_group}}"
+
+    - name: Install docker compose
+      ansible.builtin.get_url:
+        url: "https://github.com/docker/compose/releases/download/1.29.2/docker-compose-{{ansible_facts.system}}-{{ansible_facts.architecture}}"
+        dest: /usr/local/bin/docker-compose
+        mode: 'u+x,g+x'
+        group: "{{docker_compose_group}}"
