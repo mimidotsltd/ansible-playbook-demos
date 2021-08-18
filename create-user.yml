@@ -17,7 +17,7 @@
       ansible.builtin.user:
         name: "{{username}}"
         shell: "/bin/bash"
-        groups: sudo,"{{extra_group}}"
+        groups: "sudo,{{extra_group}}"
         append: true
 
     - name: Allow user to sudo without password
